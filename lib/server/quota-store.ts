@@ -4,7 +4,7 @@ import type { QuotaResponse } from "@/lib/types";
 /**
  * 开发用内存额度，上线后替换为按用户 ID 查询数据库的实现。
  */
-let usedToday = 2;
+let usedToday = 0;
 
 export const quotaStore = {
   get(): QuotaResponse {

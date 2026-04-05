@@ -20,7 +20,7 @@ export const fakeApi = {
   async getQuota(): Promise<QuotaResponse> {
     await sleep(220);
     return {
-      usedToday: 2,
+      usedToday: 0,
       limitPerDay: FREE_LIMIT_PER_DAY,
     };
   },
