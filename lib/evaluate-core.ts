@@ -3,7 +3,28 @@ import { buildComposite, clampScore } from "@/lib/trust";
 import type { EvaluatePayload, EvaluateResponse, ModelEvaluation } from "@/lib/types";
 
 /**
- * 纯函数：根据输入生成评估结果。fakeApi 与 Route Handler 共用，后续可在此处接入真实模型调用。
+ * 将三模型结果与额度合并为 API 响应（mock 与真实 LLM 共用）。
+ */
+export function finalizeEvaluateResponse(evaluations: ModelEvaluation[], usedToday: number): EvaluateResponse {
+  const composite = buildComposite(evaluations);
+  const nextUsed = usedToday + 1;
+
+  return {
+    success: true,
+    requestId: `req_${Date.now()}`,
+    quota: {
+      usedToday: nextUsed,
+      limitPerDay: FREE_LIMIT_PER_DAY,
+      remainingToday: Math.max(FREE_LIMIT_PER_DAY - nextUsed, 0),
+      requiresUpgrade: nextUsed >= FREE_LIMIT_PER_DAY,
+    },
+    evaluations,
+    composite,
+  };
+}
+
+/**
+ * 本地 mock：不调用外网模型。仅 fakeApi 使用。
  */
 export function computeEvaluateResponse(payload: EvaluatePayload, usedToday: number): EvaluateResponse {
   const textMix = `${payload.question} ${payload.answer}`;
@@ -27,19 +48,5 @@ export function computeEvaluateResponse(payload: EvaluatePayload, usedToday: num
     },
   ];
 
-  const composite = buildComposite(evaluations);
-  const nextUsed = usedToday + 1;
-
-  return {
-    success: true,
-    requestId: `req_${Date.now()}`,
-    quota: {
-      usedToday: nextUsed,
-      limitPerDay: FREE_LIMIT_PER_DAY,
-      remainingToday: Math.max(FREE_LIMIT_PER_DAY - nextUsed, 0),
-      requiresUpgrade: nextUsed >= FREE_LIMIT_PER_DAY,
-    },
-    evaluations,
-    composite,
-  };
+  return finalizeEvaluateResponse(evaluations, usedToday);
 }

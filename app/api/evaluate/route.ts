@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { computeEvaluateResponse } from "@/lib/evaluate-core";
+import { finalizeEvaluateResponse } from "@/lib/evaluate-core";
+import { getMissingLlmEnvKeys } from "@/lib/llm/env-check";
+import { runTripleModelEvaluation } from "@/lib/llm/run-triple-evaluation";
 import { quotaStore } from "@/lib/server/quota-store";
 import type { EvaluatePayload } from "@/lib/types";
 
@@ -16,12 +18,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "invalid_body" }, { status: 400 });
     }
 
+    const missing = getMissingLlmEnvKeys();
+    if (missing.length > 0) {
+      return NextResponse.json(
+        {
+          error: "llm_not_configured",
+          message: "请在环境变量中配置三模型密钥后再使用真实评估。",
+          missing,
+        },
+        { status: 503 }
+      );
+    }
+
     const { usedToday } = quotaStore.get();
-    const result = computeEvaluateResponse(body, usedToday);
+    const evaluations = await runTripleModelEvaluation(body);
+    const result = finalizeEvaluateResponse(evaluations, usedToday);
     quotaStore.setUsedToday(result.quota.usedToday);
 
     return NextResponse.json(result);
-  } catch {
+  } catch (err) {
+    console.error("[api/evaluate]", err);
     return NextResponse.json({ error: "evaluate_failed" }, { status: 500 });
   }
 }

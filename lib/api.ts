@@ -52,6 +52,23 @@ export async function apiEvaluate(payload: EvaluatePayload, usedToday: number): 
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error("评估请求失败");
+  if (!res.ok) {
+    const text = await res.text();
+    try {
+      const errBody = JSON.parse(text) as { error?: string; message?: string; missing?: string[] };
+      if (errBody.error === "llm_not_configured" && errBody.missing?.length) {
+        throw new Error(
+          `三模型未配置：请在 .env.local（或 Vercel 环境变量）填写 ${errBody.missing.join("、")}，并将 lib/constants.ts 中 USE_MOCK_API 设为 false 后重启。`
+        );
+      }
+      if (errBody.message) throw new Error(errBody.message);
+    } catch (e) {
+      if (e instanceof SyntaxError) {
+        throw new Error("评估请求失败");
+      }
+      throw e;
+    }
+    throw new Error("评估请求失败");
+  }
   return res.json();
 }

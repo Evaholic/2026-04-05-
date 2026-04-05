@@ -161,7 +161,7 @@ export function AnswerTrustHomepage() {
       if (!res.ok) {
         const hint =
           data.error === "stripe_not_configured"
-            ? "Stripe 未配置：请在 .env.local 填写 STRIPE_SECRET_KEY 与 STRIPE_PRICE_ID，保存后重启 npm run dev。"
+            ? "Stripe 未配置：本地请在 .env.local 填写 STRIPE_SECRET_KEY 与 STRIPE_PRICE_ID 并重启 dev；已部署到 Vercel 时，请到项目 Settings → Environment Variables 添加同名变量并 Redeploy。"
             : data.message ?? "无法创建支付会话，请稍后重试。";
         setBillingBanner({ variant: "error", text: hint });
         return;
