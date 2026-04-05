@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { AuthSessionProvider } from "@/components/session-provider";
 import { APP_EN_NAME, APP_NAME } from "@/lib/constants";
 import "./globals.css";
 
@@ -15,7 +16,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-Hans">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <AuthSessionProvider>{children}</AuthSessionProvider>
+      </body>
     </html>
   );
 }

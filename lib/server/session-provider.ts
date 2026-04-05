@@ -1,13 +1,21 @@
+import { auth } from "@/auth";
 import type { UserSession } from "@/lib/types";
 
-/**
- * TODO: 接入 Auth.js / Firebase / Supabase，从 cookie / token 解析用户。
- */
 export async function getServerSession(): Promise<UserSession> {
+  const session = await auth();
+  if (!session?.user) {
+    return {
+      isLoggedIn: false,
+      name: null,
+      email: null,
+      avatarUrl: null,
+    };
+  }
+
   return {
-    isLoggedIn: false,
-    name: null,
-    email: null,
-    avatarUrl: null,
+    isLoggedIn: true,
+    name: session.user.name ?? null,
+    email: session.user.email ?? null,
+    avatarUrl: session.user.image ?? null,
   };
 }

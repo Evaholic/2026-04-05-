@@ -26,7 +26,8 @@ import {
   Sparkles,
   TriangleAlert,
 } from "lucide-react";
-import { apiEvaluate, apiGetQuota, apiGetSession } from "@/lib/api";
+import { signIn, signOut, useSession } from "next-auth/react";
+import { apiEvaluate, apiGetQuota } from "@/lib/api";
 import { APP_EN_NAME, APP_NAME, FREE_LIMIT_PER_DAY, modelMeta } from "@/lib/constants";
 import type { EvaluateResponse, ModelKey, UserSession } from "@/lib/types";
 import { getTrustStyles } from "@/lib/trust";
@@ -36,7 +37,19 @@ import { SectionTitle } from "@/components/answer-trust/section-title";
 import { TrustGauge } from "@/components/answer-trust/trust-gauge";
 
 export function AnswerTrustHomepage() {
-  const [session, setSession] = useState<UserSession | null>(null);
+  const { data: authData, status: authStatus } = useSession();
+  const session: UserSession | null = useMemo(() => {
+    if (authStatus === "loading") return null;
+    if (!authData?.user) {
+      return { isLoggedIn: false, name: null, email: null, avatarUrl: null };
+    }
+    return {
+      isLoggedIn: true,
+      name: authData.user.name ?? null,
+      email: authData.user.email ?? null,
+      avatarUrl: authData.user.image ?? null,
+    };
+  }, [authData, authStatus]);
   const [question, setQuestion] = useState("长期熬夜后，周末补觉可以完全抵消伤害吗？");
   const [answer, setAnswer] = useState(
     "周末多睡几个小时就可以完全恢复，熬夜造成的影响基本都能补回来，所以平时晚睡问题不大。"
@@ -61,8 +74,7 @@ export function AnswerTrustHomepage() {
     async function bootstrap() {
       try {
         setQuotaLoading(true);
-        const [sessionData, quotaData] = await Promise.all([apiGetSession(), apiGetQuota()]);
-        setSession(sessionData);
+        const quotaData = await apiGetQuota();
         setUsedToday(quotaData.usedToday);
         setLimitPerDay(quotaData.limitPerDay);
       } catch (error) {
@@ -130,13 +142,11 @@ export function AnswerTrustHomepage() {
   }
 
   function handleGoogleLogin() {
-    /**
-     * 接真实登录时：
-     * 1. Firebase Auth: signInWithPopup(googleProvider)
-     * 2. Auth.js: signIn('google')
-     * 3. Supabase Auth: signInWithOAuth({ provider: 'google' })
-     */
-    alert("这里先放 Google 登录入口占位，后续接真实 Auth 即可。");
+    if (session?.isLoggedIn) {
+      void signOut({ callbackUrl: "/" });
+      return;
+    }
+    void signIn("google", { callbackUrl: window.location.href });
   }
 
   async function handleUpgrade() {
@@ -232,9 +242,50 @@ export function AnswerTrustHomepage() {
                   )}
                 </div>
 
-                <Button type="button" variant="outline" className="h-11 rounded-2xl px-4" onClick={handleGoogleLogin}>
-                  <LogIn className="mr-2 h-4 w-4" />
-                  {session?.isLoggedIn ? "已登录" : "使用 Google 登录"}
+                {session?.isLoggedIn ? (
+                  <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 py-1.5 pl-1.5 pr-3">
+                    {session.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={session.avatarUrl}
+                        alt=""
+                        width={36}
+                        height={36}
+                        className="h-9 w-9 rounded-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-600">
+                        {(session.name || session.email || "?").charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0 max-w-[160px]">
+                      <div className="truncate text-sm font-medium text-slate-950">{session.name || "已登录"}</div>
+                      {session.email ? (
+                        <div className="truncate text-xs text-slate-500">{session.email}</div>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 rounded-2xl px-4"
+                  onClick={handleGoogleLogin}
+                  disabled={authStatus === "loading"}
+                >
+                  {authStatus === "loading" ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      登录状态加载中
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="mr-2 h-4 w-4" />
+                      {session?.isLoggedIn ? "退出登录" : "使用 Google 登录"}
+                    </>
+                  )}
                 </Button>
 
                 <Button
@@ -312,9 +363,24 @@ export function AnswerTrustHomepage() {
                     )}
                   </Button>
 
-                  <Button variant="outline" className="h-12 rounded-2xl px-6 text-base" onClick={handleGoogleLogin}>
-                    <LogIn className="mr-2 h-4 w-4" />
-                    Google 登录
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-12 rounded-2xl px-6 text-base"
+                    onClick={handleGoogleLogin}
+                    disabled={authStatus === "loading"}
+                  >
+                    {authStatus === "loading" ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        登录加载中
+                      </>
+                    ) : (
+                      <>
+                        <LogIn className="mr-2 h-4 w-4" />
+                        {session?.isLoggedIn ? "退出登录" : "Google 登录"}
+                      </>
+                    )}
                   </Button>
 
                   <Button variant="outline" className="h-12 rounded-2xl px-6 text-base" onClick={handleFillDemo}>

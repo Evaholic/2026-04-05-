@@ -31,8 +31,8 @@ export const fakeApi = {
   },
 };
 
+/** 登录态始终走服务端 Session，与 USE_MOCK_API（仅影响评估 mock）无关 */
 export async function apiGetSession(): Promise<UserSession> {
-  if (USE_MOCK_API) return fakeApi.getSession();
   const res = await fetch("/api/auth/session", { cache: "no-store" });
   if (!res.ok) throw new Error("获取登录状态失败");
   return res.json();
